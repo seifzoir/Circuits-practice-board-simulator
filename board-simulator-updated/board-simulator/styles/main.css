@@ -1,0 +1,451 @@
+:root {
+  --bg-bench: #11161d;
+  --bg-toolbar: #19212c;
+  --border-subtle: #2a3646;
+  --text-main: #e6edf5;
+  --text-muted: #93a4b8;
+  --accent: #38bdf8;
+  --danger: #ef4444;
+  --warn: #f59e0b;
+  --mains-on: #22c55e;
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+input, select { user-select: text; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-bench);
+  color: var(--text-main);
+  font-family: var(--font-ui);
+  user-select: none;
+}
+
+body { display: flex; flex-direction: column; }
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: 30;
+}
+
+.toolbar-group { display: flex; align-items: center; gap: 5px; }
+.toolbar-divider { width: 1px; height: 22px; background: var(--border-subtle); margin: 0 2px; }
+
+.brand-badge {
+  background: #235985;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.brand-title { font-size: 13px; font-weight: 600; color: #dbe7f3; }
+.group-label { font-size: 12px; color: var(--text-muted); }
+
+.btn, .select-input {
+  appearance: none;
+  border: 1px solid #334256;
+  background: #222d3b;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.select-input { padding-right: 22px; }
+.btn:hover:not(:disabled), .select-input:hover { background: #2c3a4c; border-color: #4a607a; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn.active { background: #1d4e78; border-color: var(--accent); color: #fff; }
+.btn-accent { background: #0f4c5c; border-color: #2dd4bf; color: #ccfbf1; }
+.btn-danger:hover:not(:disabled) { background: #4b1d24; border-color: var(--danger); }
+.btn-icon { min-width: 26px; justify-content: center; padding: 4px 7px; font-weight: 700; }
+
+
+.color-swatches { display: flex; align-items: center; gap: 5px; }
+.color-swatch {
+  width: 19px; height: 19px; border-radius: 50%;
+  border: 2px solid #0f141a; box-shadow: 0 0 0 1px #44566c; cursor: pointer;
+}
+.color-swatch.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent); transform: scale(1.08); }
+.zoom-readout { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); min-width: 40px; text-align: center; }
+
+/* Workspace */
+.workspace {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #1d2633 0%, #0e131a 100%);
+}
+
+.canvas-area {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#board-svg, #wire-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#board-svg { outline: none; cursor: default; }
+#board-svg.pan-mode { cursor: grab; }
+#board-svg.pan-mode.panning { cursor: grabbing; }
+
+/* The wire overlay sits above the multimeter panels; only cables and the rotate button take clicks */
+#wire-overlay { z-index: 5000; pointer-events: none; overflow: hidden; }
+.wire-hit { pointer-events: stroke; cursor: pointer; }
+.rotate-btn { pointer-events: all; cursor: pointer; }
+.rotate-btn:hover circle { fill: #1479b8; }
+
+.socket-hit { cursor: crosshair; }
+.knob-hit { cursor: ns-resize; }
+.component-draggable { cursor: grab; }
+.component-draggable.dragging { cursor: grabbing; }
+.canvas-area.tool-pan .component-draggable { cursor: grab; }
+.wire-group:hover .wire-core { filter: brightness(1.22); }
+
+/* Selection highlights */
+.component-draggable .sel-ring {
+  stroke: #38bdf8; stroke-width: 2.6; stroke-dasharray: 7 4; opacity: 0; pointer-events: none;
+}
+.component-draggable.selected .sel-ring { opacity: 1; }
+.wire-group.selected .wire-select-glow { opacity: 0.8; }
+
+/* Components sidebar */
+.components-sidebar {
+  width: 236px;
+  flex: 0 0 236px;
+  display: flex;
+  flex-direction: column;
+  background: #151d28;
+  border-right: 1px solid var(--border-subtle);
+  z-index: 6000;
+  min-height: 0;
+}
+.components-sidebar.collapsed { display: none; }
+.sidebar-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; font-size: 13px; font-weight: 700; color: #d6e4f2;
+  border-bottom: 1px solid #263445; background: #1a2431;
+}
+.sidebar-hint {
+  padding: 8px 12px; font-size: 11px; line-height: 1.45; color: var(--text-muted);
+  border-bottom: 1px solid #223042;
+}
+.sidebar-hint strong { color: #cfe3f5; }
+.components-list {
+  flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px;
+}
+.component-card {
+  background: #1c2735; border: 1px solid #2f4056; border-radius: 8px; padding: 8px 8px 9px;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.component-card:hover { border-color: #4b7ea8; background: #20304a; }
+.card-drag-area { cursor: grab; touch-action: none; }
+.card-drag-area:active { cursor: grabbing; }
+.card-preview {
+  width: 100%; height: 92px; display: block;
+  background: radial-gradient(circle at 50% 40%, #2a6a9a 0%, #1a4a6e 100%);
+  border-radius: 6px; margin-bottom: 7px; pointer-events: none;
+}
+.card-title { font-size: 12.5px; font-weight: 700; color: #e8f1fa; }
+.card-sub { font-size: 10.5px; color: var(--text-muted); margin-top: 1px; }
+.card-value { display: flex; align-items: center; gap: 5px; margin-top: 8px; }
+.card-value label { font-size: 10.5px; color: var(--text-muted); width: 34px; }
+
+.value-input, .value-select {
+  padding: 5px 7px; font-size: 13px; background: #101822; color: #e6edf5;
+  border: 1px solid #35475c; border-radius: 5px; user-select: text;
+}
+.value-input { flex: 1; min-width: 0; width: 100%; }
+.value-select { cursor: pointer; }
+.value-input:focus, .value-select:focus { outline: none; border-color: var(--accent); }
+
+/* Floating Panels */
+.floating-panel {
+  position: absolute;
+  background: rgba(20, 27, 36, 0.96);
+  border: 1px solid #35475e;
+  border-radius: 10px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.65);
+  z-index: 25;
+  overflow: hidden;
+}
+.floating-panel.hidden { display: none; }
+
+.panel-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #1b2533;
+  border-bottom: 1px solid #2b3a4e;
+  font-size: 12px;
+  font-weight: 600;
+  color: #d6e4f2;
+  cursor: move;
+}
+
+/* UNI-T UT61A Multimeter */
+.dmm-panel { width: 256px; }
+.ut61a-shell {
+  padding: 10px;
+  background: linear-gradient(145deg, #df2626 0%, #b91c1c 100%);
+  border-radius: 0 0 10px 10px;
+}
+.ut61a-inner {
+  background: linear-gradient(180deg, #2b3036 0%, #1d2126 100%);
+  border-radius: 10px;
+  padding: 8px 9px 10px;
+  border: 2px solid #121518;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+}
+.ut61a-brand-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+}
+.ut61a-logo {
+  background: #dc2626; color: #fff; font-weight: 900; font-size: 10px;
+  padding: 1px 5px; border-radius: 2px; letter-spacing: 0.06em;
+}
+.ut61a-model { color: #e2e8f0; font-size: 10px; font-weight: 700; }
+
+.ut61a-lcd {
+  background: #c5d1bd;
+  border: 3px solid #101316;
+  border-radius: 5px;
+  padding: 5px 7px 4px;
+  color: #161d17;
+  font-family: var(--font-mono);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.35);
+  transition: background 0.15s;
+}
+.ut61a-lcd.backlight { background: #d9f99d; box-shadow: inset 0 0 12px #bef264; }
+.ut61a-lcd.off { background: #9aa694; color: transparent; }
+.ut61a-lcd.off * { opacity: 0; }
+
+.lcd-top-flags {
+  display: flex; justify-content: space-between; font-size: 9px; font-weight: 700;
+  min-height: 12px;
+}
+.lcd-main-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 2px 0;
+}
+.lcd-digits {
+  font-size: 27px; font-weight: 700; letter-spacing: 0.03em; line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.lcd-unit { font-size: 12px; font-weight: 800; margin-left: 3px; }
+.lcd-bottom-flags {
+  display: flex; justify-content: space-between; font-size: 8.5px; font-weight: 700;
+}
+
+.ut61a-counts {
+  text-align: right; font-size: 8.5px; color: #cbd5e1; margin: 3px 2px 5px; font-weight: 600;
+}
+
+.ut61a-btn-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 6px;
+}
+.dmm-btn {
+  background: #14181d; color: #e2e8f0; border: 1px solid #404854;
+  border-radius: 3px; padding: 3px 2px; font-size: 8.5px; font-weight: 700;
+  cursor: pointer; text-align: center;
+}
+.dmm-btn:hover { background: #262e38; }
+.dmm-btn.active { border-color: #38bdf8; color: #7dd3fc; }
+.dmm-btn.yellow-text { color: #fde047; }
+
+.ut61a-side-btns {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;
+}
+.dmm-round-btn {
+  width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #0e1114;
+  cursor: pointer; box-shadow: 0 2px 3px rgba(0,0,0,0.45);
+}
+.dmm-round-btn.yellow { background: #facc15; }
+.dmm-round-btn.blue { background: #7dd3fc; }
+.dmm-side-label { font-size: 8px; color: #cbd5e1; font-weight: 700; }
+
+.ut61a-dial-wrap { position: relative; width: 100%; display: flex; justify-content: center; margin: 2px 0 4px; }
+.ut61a-jacks {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 4px;
+  padding-top: 5px; border-top: 1px solid #353c45;
+}
+.dmm-jack {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer;
+  padding: 2px; border-radius: 4px;
+}
+.dmm-jack-lbl { font-size: 8.5px; font-weight: 700; color: #e2e8f0; }
+.dmm-jack-lbl.yellow { color: #facc15; }
+
+
+.dmm-fuse-banner {
+  margin-top: 6px; padding: 5px 7px; border-radius: 4px;
+  background: #450a0a; border: 1px solid #ef4444; color: #fecaca;
+  font-size: 10.5px; display: flex; justify-content: space-between; align-items: center;
+}
+.dmm-fuse-banner.hidden { display: none; }
+
+/* Oscilloscope */
+.scope-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.scope-canvas {
+  width: 100%; height: 220px; border-radius: 6px;
+  background: #071118; border: 1px solid #26394c; display: block;
+}
+.scope-controls {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 11px;
+}
+.scope-ctrl-box {
+  background: #1a232f; border: 1px solid #2d3d50; border-radius: 5px; padding: 5px 6px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.scope-ctrl-box label { font-size: 10px; color: var(--text-muted); }
+.scope-ctrl-box select, .scope-ctrl-box button {
+  background: #111822; color: #e2e8f0; border: 1px solid #35475c;
+  border-radius: 4px; padding: 3px 5px; font-size: 11px; cursor: pointer;
+}
+.scope-readouts {
+  display: flex; justify-content: space-between; font-family: var(--font-mono);
+  font-size: 11px; background: #101720; padding: 5px 8px; border-radius: 5px; border: 1px solid #253445;
+}
+.ch-a-txt { color: #facc15; }
+.ch-b-txt { color: #38bdf8; }
+
+/* Tooltip & Status & Modal */
+.tooltip {
+  position: fixed; pointer-events: none; background: rgba(12, 18, 26, 0.95);
+  border: 1px solid #3c5068; color: #eef4fa; padding: 6px 10px; border-radius: 6px;
+  font-size: 12px; line-height: 1.35; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  z-index: 40; white-space: nowrap;
+}
+.tooltip.hidden { display: none; }
+.tooltip .tt-title { font-weight: 600; color: #7dd3fc; }
+.tooltip .tt-volt { font-family: var(--font-mono); font-size: 11.5px; color: #4ade80; }
+.tooltip .tt-sub { font-size: 11px; color: #a9bacd; }
+
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 12px; background: #141b24; border-top: 1px solid var(--border-subtle);
+  font-size: 12px; color: var(--text-muted);
+}
+.status-right { display: flex; align-items: center; gap: 8px; }
+.status-right .sep { color: #364558; }
+
+.modal {
+  position: fixed; inset: 0; background: rgba(6, 10, 15, 0.72);
+  display: flex; align-items: center; justify-content: center; z-index: 60;
+}
+.modal.hidden { display: none; }
+.modal-card {
+  width: min(580px, 92vw); background: #1a232f; border: 1px solid #35475e;
+  border-radius: 10px; box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6); overflow: hidden;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--border-subtle);
+}
+.modal-header h2 { margin: 0; font-size: 15px; }
+.modal-body { padding: 14px 18px 18px; font-size: 13px; line-height: 1.55; color: #cfdbe8; }
+.modal-body ul { margin: 0 0 14px; padding-left: 18px; }
+.modal-body li { margin-bottom: 6px; }
+.shortcut-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+  background: #131a23; padding: 10px 12px; border-radius: 6px;
+  border: 1px solid #283546; font-size: 12px;
+}
+kbd {
+  background: #273445; border: 1px solid #455870; border-radius: 4px;
+  padding: 1px 5px; font-family: var(--font-mono); font-size: 11px; color: #fff;
+}
+
+
+/* Multi-meter badge in floating panel header */
+.dmm-id-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #0b1117;
+  margin-right: 6px;
+}
+
+.dmm-header-title {
+  display: inline-flex;
+  align-items: center;
+}
+
+
+/* Diagnostics bar */
+.diagnostics-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(127, 29, 29, 0.94);
+  border: 1px solid #f87171;
+  color: #fee2e2;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 5100;
+  max-width: 560px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.diagnostics-bar.warn { background: rgba(120, 53, 15, 0.94); border-color: #fbbf24; color: #fef3c7; }
+.diagnostics-bar.hidden { display: none; }
+
+/* Multimeter panel header + jacks (jacks are real sockets) */
+.dmm-header-title { display: inline-flex; align-items: baseline; gap: 8px; font-size: 12.5px; font-weight: 700; color: #f1f5f9; }
+.dmm-header-model { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+
+.dmm-jack { cursor: crosshair; }
+.dmm-jack-hole {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4c5866 0%, #1e242b 62%, #0b0e12 100%);
+  border: 2px solid #0a0c0e;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: none;
+  transition: box-shadow 0.1s ease;
+}
+.dmm-jack-bore {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: radial-gradient(circle, #030406 40%, #2b333d 100%);
+  box-shadow: 0 0 0 1.5px rgba(138, 153, 173, 0.55);
+  pointer-events: none;
+}
+.dmm-jack:hover .dmm-jack-hole, .dmm-jack-hole.jack-hot { box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.85); }
+.dmm-jack-hint { text-align: center; font-size: 9px; color: #8696aa; margin-top: 4px; }
