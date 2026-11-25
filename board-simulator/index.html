@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#19212c" />
+  <title>PC Basic Electronic Board — Model 1017.1 USB Simulator</title>
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+  <header class="toolbar" aria-label="Simulator Controls">
+    <div class="toolbar-group brand">
+      <span class="brand-title">PC Basic Electronic Board</span>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-group" role="group" aria-label="Patch Cord Colors">
+      <span class="group-label">Wire:</span>
+      <div id="color-picker" class="color-swatches"></div>
+    </div>
+
+    <div class="toolbar-group" role="group" aria-label="Tools">
+      <button id="tool-wire" class="btn btn-tool active" type="button" title="Wire Tool (W)">Wire</button>
+      <button id="tool-pan" class="btn btn-tool" type="button" title="Pan View Tool (H / Space+Drag)">Pan</button>
+      <button id="btn-delete" class="btn btn-danger" type="button" title="Delete the selected wire or component (Del / Backspace)" disabled>Delete</button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-group">
+      <button id="btn-undo" class="btn" type="button" title="Undo (Ctrl+Z)" disabled>Undo</button>
+      <button id="btn-redo" class="btn" type="button" title="Redo (Ctrl+Y)" disabled>Redo</button>
+      <button id="btn-clear-wires" class="btn btn-danger" type="button" title="Remove All Patch Cords">Clear</button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-group">
+      <button id="btn-add-multimeter" class="btn" type="button" title="Add Another Multimeter (D)">+ Add Multimeter (<span id="multimeter-count-badge">0</span>)</button>
+      <button id="btn-toggle-scope" class="btn" type="button" title="Toggle Oscilloscope (O)">Oscilloscope</button>
+      <button id="btn-toggle-sidebar" class="btn active" type="button" title="Show / hide the Components sidebar (P)">Components</button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <div class="toolbar-group">
+      <button id="btn-save" class="btn" type="button" title="Save Circuit JSON">Save</button>
+      <button id="btn-load" class="btn" type="button" title="Load Circuit JSON">Load</button>
+      <input id="file-load-input" type="file" accept=".json,application/json" hidden />
+      <button id="btn-zoom-out" class="btn btn-icon" type="button" title="Zoom Out (-)">−</button>
+      <span id="zoom-readout" class="zoom-readout">100%</span>
+      <button id="btn-zoom-in" class="btn btn-icon" type="button" title="Zoom In (+)">+</button>
+      <button id="btn-zoom-fit" class="btn" type="button" title="Fit Board to Screen (0)">Fit</button>
+      <button id="btn-help" class="btn" type="button" title="Help &amp; Shortcuts (?)">?</button>
+    </div>
+  </header>
+
+  <main id="workspace" class="workspace">
+    <!-- Components sidebar -->
+    <aside id="components-sidebar" class="components-sidebar" aria-label="Components">
+      <div class="sidebar-header">
+        <span>Components</span>
+        <button id="btn-close-sidebar" class="btn btn-icon sidebar-close-btn" type="button" title="Hide sidebar">×</button>
+      </div>
+      <div class="sidebar-hint">Set a value, then <strong>drag</strong> the part onto the board (on a phone, swipe it <strong>sideways</strong>). Tap a placed part to get <em>rotate</em>, <em>edit value</em> and <em>delete</em> buttons.</div>
+      <div id="components-list" class="components-list"></div>
+    </aside>
+
+    <div id="canvas-area" class="canvas-area">
+      <svg id="board-svg" xmlns="http://www.w3.org/2000/svg" tabindex="0" aria-label="PC Basic Electronic Board 1017.1 USB">
+        <defs id="svg-defs"></defs>
+        <g id="viewport-root">
+          <g id="board-static-layer"></g>
+          <g id="board-controls-layer"></g>
+          <g id="sockets-layer"></g>
+          <g id="components-layer"></g>
+        </g>
+      </svg>
+
+      <div id="diagnostics-bar" class="diagnostics-bar hidden" role="alert"></div>
+
+      <!-- Multimeters (their jacks are sockets; patch cords are drawn above them) -->
+      <div id="dmm-panels-host"></div>
+
+      <aside id="scope-panel" class="floating-panel scope-panel hidden" style="left: 18px; bottom: 18px; width: 520px;">
+        <div class="panel-drag-handle">
+          <span>Virtual Oscilloscope (Ch A / Ch B)</span>
+          <button class="btn btn-icon panel-close" data-close="scope-panel" type="button">×</button>
+        </div>
+        <div id="scope-body"></div>
+      </aside>
+
+      <!-- Wires, selection UI and drag previews live above the multimeter panels -->
+      <svg id="wire-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g id="overlay-root">
+          <g id="wires-layer"></g>
+          <g id="selection-ui-layer"></g>
+          <g id="overlay-layer"></g>
+        </g>
+      </svg>
+
+      <!-- Phone shortcuts (the toolbar scrolls sideways on small screens) -->
+      <div id="mobile-fabs" class="mobile-fabs">
+        <button id="fab-parts" class="fab" type="button">+ Parts</button>
+        <button id="fab-meter" class="fab" type="button">+ Meter</button>
+      </div>
+
+      <div id="socket-tooltip" class="tooltip hidden" role="status" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <footer class="status-bar">
+    <span id="status-message">Ready — drag components from the sidebar onto the board and connect them with patch cords.</span>
+    <span class="status-right">
+      <span id="diag-summary">STANDBY</span>
+      <span class="sep">|</span>
+      <span id="wire-count-readout">Wires: 0</span>
+      <span class="sep">|</span>
+      <span id="phase-badge">Multimeters: 0</span>
+    </span>
+  </footer>
+
+  <!-- Help Modal -->
+  <div id="help-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="help-title">Board Simulator Controls &amp; Shortcuts</h2>
+        <button id="btn-close-help" class="btn btn-icon" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <ul>
+          <li><strong>Mains:</strong> switch the board on with the green rocker switch on the board itself.</li>
+          <li><strong>Wiring:</strong> drag from any socket (or multimeter jack) to another, or click one then the other. Several plugs can share a socket.</li>
+          <li><strong>Multimeters:</strong> click <em>+ Add Multimeter</em> (or press <code>D</code>). Their four jacks start empty — connect them with patch cords like any other socket.</li>
+          <li><strong>Components:</strong> drag them from the sidebar onto sockets. Double-click a resistor / capacitor / inductor to change its value (Ω, kΩ, MΩ …). Turn the variable resistor's knob with the mouse.</li>
+          <li><strong>Phone / tablet:</strong> pinch with two fingers to zoom and drag with two fingers to pan; one finger on an empty spot also pans. Touch near a socket and drag to draw a wire (or tap one socket, then another). Tap a part or a cable to select it — the buttons next to a part rotate, edit or delete it, and the <em>Delete</em> button in the toolbar removes the selection. Open the parts drawer with <em>Components</em>.</li>
+          <li><strong>Select &amp; Delete:</strong> click a wire or a component to select it, then press <code>Delete</code> / <code>Backspace</code>.</li>
+        </ul>
+        <div class="shortcut-grid">
+          <div><kbd>1</kbd>–<kbd>6</kbd> Wire color</div>
+          <div><kbd>W</kbd> Wire tool</div>
+          <div><kbd>H</kbd> Pan tool</div>
+          <div><kbd>Del</kbd> Delete selected</div>
+          <div><kbd>R</kbd> Rotate selected</div>
+          <div><kbd>D</kbd> Add multimeter</div>
+          <div><kbd>O</kbd> Oscilloscope</div>
+          <div><kbd>P</kbd> Components</div>
+          <div><kbd>0</kbd> Fit board</div>
+          <div><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</div>
+          <div><kbd>Ctrl</kbd>+<kbd>Y</kbd> Redo</div>
+          <div><kbd>Esc</kbd> Deselect / cancel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Value Edit Modal -->
+  <div id="value-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card" style="width: min(380px, 92vw);">
+      <div class="modal-header">
+        <h2 id="value-modal-title">Set Component Value</h2>
+        <button id="btn-close-value-modal" class="btn btn-icon" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" style="display:flex; gap:8px; align-items:center;">
+        <input id="value-modal-input" type="number" min="0" step="any" value="1" class="value-input" />
+        <select id="value-modal-unit" class="value-select"></select>
+        <button id="btn-value-modal-ok" class="btn btn-accent" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
